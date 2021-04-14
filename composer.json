@@ -1,0 +1,25 @@
+{
+    "name": "abbadon1334/atk4-teams",
+    "type": "package",
+    "description": "Agile Toolkit with Microsoft Teams",
+    "homepage": "https://github.com/abbadon1334/atk4-teams",
+    "license": "MIT",
+    "keywords": ["Microsoft", "Teams", "Agile Toolkit", "Atk4"],
+    "authors": [{
+        "email": "fdanti@gmail.com",
+        "name": "Francesco Danti"
+    }],
+    "require": {
+        "php" : ">=7.4.0",
+        "abbadon1334/atk4-app-container": "master@dev",
+        "thenetworg/oauth2-azure": "^2.0"
+    },
+    "require-dev": {
+        "atk4/ui": "2.3.5"
+    },
+    "autoload": {
+        "psr-4" : {
+            "Atk4\\Teams\\" : "src/"
+        }
+    }
+}
