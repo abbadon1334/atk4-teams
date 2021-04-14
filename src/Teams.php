@@ -4,6 +4,7 @@ namespace Atk4\Teams;
 
 use Atk4\Container\AppContainer;
 use Atk4\Core\AppScopeTrait;
+use Atk4\Core\NameTrait;
 use Atk4\Core\SessionTrait;
 use League\OAuth2\Client\Token\AccessToken;
 use TheNetworg\OAuth2\Client\Provider\Azure;
@@ -11,6 +12,7 @@ use TheNetworg\OAuth2\Client\Provider\Azure;
 class Teams
 {
     use AppScopeTrait;
+    use NameTrait;
     use SessionTrait;
 
     private Azure        $provider;
@@ -26,10 +28,10 @@ class Teams
     private function setProvider()
     {
         $this->provider = new Azure([
-            'clientId'               => $this->container->get("TEAMS_APP_ID"),
-            'clientSecret'           => $this->container->get("TEAMS_APP_SECRET"),
-            'redirectUri'            => $this->container->get("TEAMS_APP_REDIRECT_URI"),
-            'scopes'                 => $this->container->get("TEAMS_APP_SCOPES"),
+            'clientId'               => $this->container->get("teams.app_id"),
+            'clientSecret'           => $this->container->get("teams.app_secret"),
+            'redirectUri'            => $this->container->get("teams.app_redirect_uri"),
+            'scopes'                 => $this->container->get("teams.app_scopes"),
             'defaultEndPointVersion' => Azure::ENDPOINT_VERSION_2_0,
         ]);
     }
