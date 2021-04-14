@@ -11,7 +11,7 @@
     }],
     "require": {
         "php" : ">=7.4.0",
-        "abbadon1334/atk4-app-container": "master@dev",
+        "abbadon1334/atk4-app-container": "dev-master@dev",
         "thenetworg/oauth2-azure": "^2.0"
     },
     "require-dev": {
