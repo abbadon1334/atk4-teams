@@ -144,7 +144,7 @@ class Teams
 
         unset($data["@odata.context"]); // remove useless data
 
-        $data["Guid"] = $data["id"]; // switch id with Guid
+        $data["guid"] = $data["id"]; // switch id with Guid
         $data["id"] = 1; // hardcode id for session load / delete
 
         $this->userTeams->save($data);
