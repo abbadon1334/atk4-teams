@@ -17,7 +17,7 @@ class UserTeams extends \Atk4\Data\Model
         $this->addField("displayName");
         $this->addField("givenName");
         $this->addField("jobTitle");
-        $this->addField("mail", [Email::class]);
+        $this->addField("mail");
         $this->addField("mobilePhone");
         $this->addField("officeLocation");
         $this->addField("preferredLanguage");
