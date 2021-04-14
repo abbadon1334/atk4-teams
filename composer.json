@@ -11,8 +11,12 @@
     }],
     "require": {
         "php" : ">=7.4.0",
+        "atk4/data": "2.3.5",
         "abbadon1334/atk4-app-container": "dev-master",
         "thenetworg/oauth2-azure": "^2.0"
+    },
+    "require-dev": {
+        "atk4/ui": "2.3.5"
     },
     "autoload": {
         "psr-4" : {

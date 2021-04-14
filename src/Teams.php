@@ -6,6 +6,9 @@ use Atk4\Container\AppContainer;
 use Atk4\Core\AppScopeTrait;
 use Atk4\Core\NameTrait;
 use Atk4\Core\SessionTrait;
+use Atk4\Data\Model;
+use Atk4\Data\Persistence\Static_;
+use Atk4\Teams\Data\UserTeams;
 use League\OAuth2\Client\Token\AccessToken;
 use TheNetworg\OAuth2\Client\Provider\Azure;
 
@@ -23,15 +26,16 @@ class Teams
     {
         $this->container = $container;
         $this->token = $this->getToken();
+        $this->TryLoadUserTeamsModel();
     }
 
     private function setProvider()
     {
         $this->provider = new Azure([
-            'clientId'               => $this->container->get("teams.app_id"),
-            'clientSecret'           => $this->container->get("teams.app_secret"),
-            'redirectUri'            => $this->container->get("teams.app_redirect_uri"),
-            'scopes'                 => $this->container->get("teams.app_scopes"),
+            'clientId'               => $this->container->get("teams/app_id"),
+            'clientSecret'           => $this->container->get("teams/app_secret"),
+            'redirectUri'            => $this->container->get("teams/app_redirect_uri"),
+            'scopes'                 => $this->container->get("teams/app_scopes"),
             'defaultEndPointVersion' => Azure::ENDPOINT_VERSION_2_0,
         ]);
     }
@@ -52,6 +56,10 @@ class Teams
 
     public function authenticate()
     {
+        if(isset($_COOKIE["teams_state"])) {
+            $this->callback();
+        }
+
         if (null === $this->token) {
             $this->requestAuth();
         }
@@ -65,19 +73,13 @@ class Teams
 
         setcookie('teams_state', $this->provider->getState(), ['samesite' => 'None', 'secure' => true]);
 
-        if (null === $this->getApp()) {
-            header('Location: ' . $authorizationUrl);
-
-            return;
-        }
-
-        $this->getApp()->terminate("", ['Location' => $authorizationUrl]);
+        $this->redirect($authorizationUrl);
     }
 
     /**
      * @throws \League\OAuth2\Client\Provider\Exception\IdentityProviderException
      */
-    private function callback()
+    public function callback()
     {
         $this->setProvider();
 
@@ -85,24 +87,71 @@ class Teams
         $teams_code = $_GET['code'] ?? null;
         $teams_state = $_GET['state'] ?? null;
 
-        if ($teams_code && $cookie_teams && $teams_state) {
+        try {
+            if ($teams_code && $cookie_teams && $teams_state) {
 
-            if ($teams_state == $cookie_teams) {
+                if ($teams_state == $cookie_teams) {
 
-                unset($_COOKIE["teams_state"]);
+                    /** @var AccessToken $token */
+                    $this->token = $this->provider->getAccessToken('authorization_code', [
+                        'scope' => $this->provider->scope,
+                        'code'  => $teams_code,
+                    ]);
 
-                /** @var AccessToken $token */
-                $this->token = $this->provider->getAccessToken('authorization_code', [
-                    'scope' => $this->provider->scope,
-                    'code'  => $teams_code,
-                ]);
-
-                $this->serializeToken($this->token);
-
-                return true;
+                    $this->serializeToken($this->token);
+                    $this->redirect($this->container->get("teams/app_redirect_uri_on_success"));
+                }
             }
+        } catch(\Throwable $e) {
+            if (null === $this->getApp()) {
+                echo $e->getMessage();
+            }
+            throw new \Atk4\Ui\Exception($e->getMessage());
+        } finally {
+            unset($_COOKIE["teams_state"]);
+        }
+    }
+
+    private function redirect(string $uri)
+    {
+        if (null === $this->getApp()) {
+            header('Location: ' . $uri);
+            return;
         }
 
-        return false;
+        $this->getApp()->terminate("", ['Location' => $uri]);
+    }
+
+    public function getWhoAMI() : UserTeams {
+        if($this->userTeams->loaded()) {
+            return $this->userTeams;
+        }
+
+        $data = $this->provider->get($this->provider->getRootMicrosoftGraphUri($this->token) . '/v1.0/me', $this->token);
+        $this->setTeamUser($data);
+        return $this->userTeams;
+    }
+
+    private UserTeams $userTeams;
+
+    private function TryLoadUserTeamsModel() : UserTeams {
+        $persistence = new Static_($this->recall("teams_user", []));
+        $this->userTeams = new UserTeams($persistence);
+        return $this->userTeams->tryLoad(1);
+    }
+
+    private function setTeamUser(array $data) {
+
+        unset($data["@odata.context"]); // remove useless data
+
+        $data["Guid"] = $data["id"]; // switch id with Guid
+        $data["id"] = 1; // hardcode id for session load / delete
+
+        $this->userTeams->save($data);
+    }
+
+    private function logout() {
+        session_destroy();
+        $this->redirect($this->container->get("teams/app_redirect_uri_on_success"));
     }
 }
