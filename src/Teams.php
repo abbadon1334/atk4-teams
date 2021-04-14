@@ -6,10 +6,8 @@ use Atk4\Container\AppContainer;
 use Atk4\Core\AppScopeTrait;
 use Atk4\Core\NameTrait;
 use Atk4\Core\SessionTrait;
-use Atk4\Data\Model;
 use Atk4\Data\Persistence\Static_;
 use Atk4\Teams\Data\UserTeams;
-use Atk4\Ui\Exception;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use League\OAuth2\Client\Token\AccessToken;
 use TheNetworg\OAuth2\Client\Provider\Azure;
@@ -121,6 +119,7 @@ class Teams
     {
         if (null === $this->getApp()) {
             header('Location: ' . $uri);
+
             return;
         }
 
