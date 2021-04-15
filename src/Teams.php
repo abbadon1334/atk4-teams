@@ -29,6 +29,9 @@ class Teams
     public function __construct(AppContainer $container)
     {
         $this->container = $container;
+
+        $this->setProvider();
+
         $this->token = $this->getToken();
         $this->tryLoadUserTeamsModel();
     }
@@ -52,14 +55,15 @@ class Teams
 
     public function authenticate()
     {
-        if (isset($_COOKIE["teams_state"])) {
+        if (isset($_COOKIE["teams_state"]) && !empty($_COOKIE["teams_state"] ?? "") ) {
             $this->callback(); // client will be redirect
+            return;
         }
 
         if (null === $this->token) {
             $this->requestAuth(); // client will be redirect
+            return;
         }
-
         // Token is valid
         // check if is expired and refresh if not
         if ($this->token->hasExpired()) {
@@ -81,8 +85,6 @@ class Teams
      */
     public function callback()
     {
-        $this->setProvider();
-
         $cookie_teams = $_COOKIE["teams_state"] ?? null;
         $teams_code = $_GET['code'] ?? null;
         $teams_state = $_GET['state'] ?? null;
@@ -108,7 +110,7 @@ class Teams
             }
             throw new \Atk4\Core\Exception($e->getMessage());
         } finally {
-            unset($_COOKIE["teams_state"]);
+            setcookie("teams_state", "", time()-3600);
         }
     }
 
@@ -140,8 +142,6 @@ class Teams
 
     private function requestAuth()
     {
-        $this->setProvider();
-
         $authorizationUrl = $this->provider->getAuthorizationUrl(['scope' => $this->provider->scope]);
 
         setcookie('teams_state', $this->provider->getState(), ['samesite' => 'None', 'secure' => true]);
@@ -193,8 +193,6 @@ class Teams
 
     private function refreshToken()
     {
-        $this->setProvider();
-
         try {
             $this->token = $this->provider->getAccessToken('refresh_token', [
                 'scope'         => $this->provider->scope,
