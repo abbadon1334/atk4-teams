@@ -66,7 +66,8 @@ class Teams
             if (!is_null($this->token->getRefreshToken())) {
                 $this->refreshToken();
             } else {
-                $this->authenticate();
+                $this->forgetToken();
+                $this->authenticate(); // possibile loop but need to be tested
             }
         }
 
@@ -179,10 +180,14 @@ class Teams
         return $this->userTeams;
     }
 
-    private function logout()
-    {
+    private function forgetToken() {
         $this->forget("teams_token");
         $this->token = null;
+    }
+
+    private function logout()
+    {
+        $this->forgetToken();
         $this->redirect($this->container->get("teams/app_redirect_uri_on_success"));
     }
 
@@ -198,8 +203,7 @@ class Teams
 
             $this->serializeToken($this->token);
         } catch(IdentityProviderException $e) {
-            $this->forget("teams_token");
-            $this->token = null;
+            $this->forgetToken();
         }
     }
 }
