@@ -11,7 +11,7 @@
     }],
     "require": {
         "php" : ">=7.4.0",
-        "atk4/data": "2.3.6",
+        "atk4/data": "2.3.5",
         "abbadon1334/atk4-app-container": "dev-master",
         "thenetworg/oauth2-azure": "^2.0"
     },
