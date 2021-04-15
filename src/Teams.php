@@ -6,8 +6,10 @@ use Atk4\Container\AppContainer;
 use Atk4\Core\AppScopeTrait;
 use Atk4\Core\NameTrait;
 use Atk4\Core\SessionTrait;
+use Atk4\Data\Model;
 use Atk4\Data\Persistence\Static_;
 use Atk4\Teams\Data\UserTeams;
+use Atk4\Ui\Exception;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use League\OAuth2\Client\Token\AccessToken;
 use TheNetworg\OAuth2\Client\Provider\Azure;
@@ -56,6 +58,16 @@ class Teams
 
         if (null === $this->token) {
             $this->requestAuth(); // client will be redirect
+        }
+
+        // Token is valid
+        // check if is expired and refresh if not
+        if ($this->token->hasExpired()) {
+            if (!is_null($this->token->getRefreshToken())) {
+                $this->refreshToken();
+            } else {
+                $this->authenticate();
+            }
         }
 
         // client authentication : OK
@@ -119,7 +131,6 @@ class Teams
     {
         if (null === $this->getApp()) {
             header('Location: ' . $uri);
-
             return;
         }
 
@@ -137,17 +148,17 @@ class Teams
         $this->redirect($authorizationUrl);
     }
 
-    public function refreshWhoAMI(bool $force = false): UserTeams
+    public function refreshWhoAMI(bool $force = false): void
     {
         if ($this->userTeams->loaded() && !$force) {
-            return $this->userTeams;
+            return;
         }
 
-        $data = $this->provider->get($this->provider->getRootMicrosoftGraphUri($this->token) . '/v1.0/me',
-            $this->token);
-        $this->setTeamUser($data);
+        $data = $this->provider->get(
+            $this->provider->getRootMicrosoftGraphUri($this->token) . '/v1.0/me',$this->token
+        );
 
-        return $this->userTeams;
+        $this->setTeamUser($data);
     }
 
     private function setTeamUser(array $data)
@@ -160,9 +171,35 @@ class Teams
         $this->userTeams->save($data);
     }
 
+    /**
+     * @return UserTeams
+     */
+    public function getUserTeams(): UserTeams
+    {
+        return $this->userTeams;
+    }
+
     private function logout()
     {
-        session_destroy();
+        $this->forget("teams_token");
+        $this->token = null;
         $this->redirect($this->container->get("teams/app_redirect_uri_on_success"));
+    }
+
+    private function refreshToken()
+    {
+        $this->setProvider();
+
+        try {
+            $this->token = $this->provider->getAccessToken('refresh_token', [
+                'scope'         => $this->provider->scope,
+                'refresh_token' => $this->token->getRefreshToken()
+            ]);
+
+            $this->serializeToken($this->token);
+        } catch(IdentityProviderException $e) {
+            $this->forget("teams_token");
+            $this->token = null;
+        }
     }
 }
