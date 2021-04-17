@@ -1,10 +1,8 @@
 <?php
 
+declare(strict_types=1);
 
 namespace Atk4\Teams\Data;
-
-
-use Atk4\Data\Field\Email;
 
 class UserTeams extends \Atk4\Data\Model
 {
@@ -12,16 +10,16 @@ class UserTeams extends \Atk4\Data\Model
     {
         parent::init();
 
-        $this->addField("guid");
-        $this->addField("businessPhones", ['type'=>'array', 'serialize'=>'json']);
-        $this->addField("displayName");
-        $this->addField("givenName");
-        $this->addField("jobTitle");
-        $this->addField("mail");
-        $this->addField("mobilePhone");
-        $this->addField("officeLocation");
-        $this->addField("preferredLanguage");
-        $this->addField("surname");
-        $this->addField("userPrincipalName");
+        $this->addField('guid');
+        $this->addField('businessPhones', ['type' => 'array', 'serialize' => 'json']);
+        $this->addField('displayName');
+        $this->addField('givenName');
+        $this->addField('jobTitle');
+        $this->addField('mail');
+        $this->addField('mobilePhone');
+        $this->addField('officeLocation');
+        $this->addField('preferredLanguage');
+        $this->addField('surname');
+        $this->addField('userPrincipalName');
     }
 }
