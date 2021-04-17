@@ -4,12 +4,12 @@ namespace Atk4\Teams;
 
 use Atk4\Container\AppContainer;
 use Atk4\Core\AppScopeTrait;
+use Atk4\Core\Exception;
 use Atk4\Core\NameTrait;
 use Atk4\Core\SessionTrait;
-use Atk4\Data\Model;
-use Atk4\Data\Persistence\Static_;
+use atk4\data\Persistence\Array_;
 use Atk4\Teams\Data\UserTeams;
-use Atk4\Ui\Exception;
+use Delight\Cookie\Cookie;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use League\OAuth2\Client\Token\AccessToken;
 use TheNetworg\OAuth2\Client\Provider\Azure;
@@ -47,7 +47,7 @@ class Teams
 
     private function tryLoadUserTeamsModel(): UserTeams
     {
-        $persistence = new Static_($this->recall("teams_user", []));
+        $persistence = new Array_($this->recall("teams_user", []));
         $this->userTeams = new UserTeams($persistence);
 
         return $this->userTeams->tryLoad(1);
@@ -55,41 +55,58 @@ class Teams
 
     public function authenticate()
     {
-        if (isset($_COOKIE["teams_state"]) && !empty($_COOKIE["teams_state"] ?? "") ) {
+        // cookie is created only during requestAuth()
+        // if cookie exists we must call the callback()
+        // in the callback the cookie will be deleted
+        if (Cookie::get('TEAM_AUTH_STATE', "") !== "") {
             $this->callback(); // client will be redirect
-            return;
         }
 
+        // We have a token
+        if (null !== $this->token) {
+            // check if is expired and refresh if not
+            if ($this->token->hasExpired()) {
+                if (!is_null($this->token->getRefreshToken())) {
+                    $this->refreshToken();
+                } else {
+                    $this->forgetToken();
+                    $this->authenticate(); // client will be redirect
+                }
+            }
+        }
+
+        // we don't have a token
         if (null === $this->token) {
             $this->requestAuth(); // client will be redirect
-            return;
-        }
-        // Token is valid
-        // check if is expired and refresh if not
-        if ($this->token->hasExpired()) {
-            if (!is_null($this->token->getRefreshToken())) {
-                $this->refreshToken();
-            } else {
-                $this->forgetToken();
-                $this->authenticate(); // possibile loop but need to be tested
-            }
         }
 
         // client authentication : OK
 
-        $this->refreshWhoAMI(); // it will be reloaded from session
+        // call Graph api /me and refresh user
+        $this->refreshWhoAMI();
     }
 
     /**
-     * @throws IdentityProviderException
+     * @throws Exception
      */
     public function callback()
     {
-        $cookie_teams = $_COOKIE["teams_state"] ?? null;
-        $teams_code = $_GET['code'] ?? null;
-        $teams_state = $_GET['state'] ?? null;
 
         try {
+
+            if (Cookie::exists('TEAM_AUTH_STATE')) {
+                throw new Exception("Something is wrong, cookie not exists");
+            }
+
+            $cookie_teams = (string)Cookie::get('TEAM_AUTH_STATE');
+
+            // we already set the cookie with a really short expire
+            // we try to delete it
+            (new Cookie('TEAM_AUTH_STATE'))->deleteAndUnset();
+
+            $teams_code = $_GET['code'] ?? null;
+            $teams_state = $_GET['state'] ?? null;
+
             if ($teams_code && $cookie_teams && $teams_state) {
 
                 if ($teams_state == $cookie_teams) {
@@ -108,9 +125,8 @@ class Teams
             if (null === $this->getApp()) {
                 echo $e->getMessage();
             }
-            throw new \Atk4\Core\Exception($e->getMessage());
-        } finally {
-            setcookie("teams_state", "", time()-3600);
+
+            throw new Exception($e->getMessage());
         }
     }
 
@@ -134,17 +150,22 @@ class Teams
     {
         if (null === $this->getApp()) {
             header('Location: ' . $uri);
-            return;
+            exit;
         }
 
-        $this->getApp()->terminate("", ['Location' => $uri]);
+        $this->getApp()->redirect($uri);
     }
 
     private function requestAuth()
     {
         $authorizationUrl = $this->provider->getAuthorizationUrl(['scope' => $this->provider->scope]);
 
-        setcookie('teams_state', $this->provider->getState(), ['samesite' => 'None', 'secure' => true]);
+        $cookie = new Cookie('TEAM_AUTH_STATE');
+        $cookie->setValue($this->provider->getState());
+        $cookie->setMaxAge(5);
+        $cookie->setSecureOnly(true);
+        $cookie->setSameSiteRestriction("None");
+        $cookie->saveAndSet();
 
         $this->redirect($authorizationUrl);
     }
@@ -156,7 +177,7 @@ class Teams
         }
 
         $data = $this->provider->get(
-            $this->provider->getRootMicrosoftGraphUri($this->token) . '/v1.0/me',$this->token
+            $this->provider->getRootMicrosoftGraphUri($this->token) . '/v1.0/me', $this->token
         );
 
         $this->setTeamUser($data);
@@ -180,7 +201,8 @@ class Teams
         return $this->userTeams;
     }
 
-    private function forgetToken() {
+    private function forgetToken()
+    {
         $this->forget("teams_token");
         $this->token = null;
     }
@@ -196,11 +218,11 @@ class Teams
         try {
             $this->token = $this->provider->getAccessToken('refresh_token', [
                 'scope'         => $this->provider->scope,
-                'refresh_token' => $this->token->getRefreshToken()
+                'refresh_token' => $this->token->getRefreshToken(),
             ]);
 
             $this->serializeToken($this->token);
-        } catch(IdentityProviderException $e) {
+        } catch (IdentityProviderException $e) {
             $this->forgetToken();
         }
     }
