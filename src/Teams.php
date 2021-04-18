@@ -9,7 +9,7 @@ use Atk4\Core\AppScopeTrait;
 use Atk4\Core\Exception;
 use Atk4\Core\NameTrait;
 use Atk4\Core\SessionTrait;
-use atk4\data\Persistence\Array_;
+use Atk4\Data\Persistence\Array_;
 use Atk4\Teams\Data\UserTeams;
 use Delight\Cookie\Cookie;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
