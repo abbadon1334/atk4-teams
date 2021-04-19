@@ -35,7 +35,7 @@ class Teams
         $this->setProvider();
 
         $this->token = $this->getToken();
-        $this->tryLoadUserTeamsModel();
+        $this->setupUserTeamsModel();
     }
 
     private function getToken(): ?AccessToken
@@ -47,16 +47,20 @@ class Teams
             : unserialize($serialized);
     }
 
-    private function tryLoadUserTeamsModel(): UserTeams
+    private function setupUserTeamsModel(): void
     {
-        $persistence = new Array_($this->recall('teams_user', []));
+        $persistence = new Array_([]);
         $this->userTeams = new UserTeams($persistence);
-
-        return $this->userTeams->tryLoad(1);
+        $this->userTeams->data = unserialize($this->recall('teams_user', "a:0:{}"));
+        $this->userTeams->setId($this->userTeams->data['id'] ?? null);
     }
 
     public function authenticate()
     {
+
+        $this->getApp()->setResponseHeader('Access-Control-Allow-Origin', "*");
+        $this->getApp()->setResponseHeader('Access-Control-Allow-Headers', "*");
+
         // cookie is created only during requestAuth()
         // if cookie exists we must call the callback()
         // in the callback the cookie will be deleted
@@ -91,11 +95,11 @@ class Teams
     public function callback()
     {
         try {
-            if (Cookie::exists('TEAM_AUTH_STATE')) {
+            if (!Cookie::exists('TEAM_AUTH_STATE')) {
                 throw new Exception('Something is wrong, cookie not exists');
             }
 
-            $cookie_teams = (string) Cookie::get('TEAM_AUTH_STATE');
+            $cookie_teams = (string)Cookie::get('TEAM_AUTH_STATE');
 
             // we already set the cookie with a really short expire
             // we try to delete it
@@ -109,7 +113,7 @@ class Teams
                     // @var AccessToken $token
                     $this->token = $this->provider->getAccessToken('authorization_code', [
                         'scope' => $this->provider->scope,
-                        'code' => $teams_code,
+                        'code'  => $teams_code,
                     ]);
 
                     $this->serializeToken($this->token);
@@ -128,10 +132,10 @@ class Teams
     private function setProvider()
     {
         $this->provider = new Azure([
-            'clientId' => $this->container->get('teams/app_id'),
-            'clientSecret' => $this->container->get('teams/app_secret'),
-            'redirectUri' => $this->container->get('teams/app_redirect_uri'),
-            'scopes' => $this->container->get('teams/app_scopes'),
+            'clientId'               => $this->container->get('teams/app_id'),
+            'clientSecret'           => $this->container->get('teams/app_secret'),
+            'redirectUri'            => $this->container->get('teams/app_redirect_uri'),
+            'scopes'                 => $this->container->get('teams/app_scopes'),
             'defaultEndPointVersion' => Azure::ENDPOINT_VERSION_2_0,
         ]);
     }
@@ -187,6 +191,7 @@ class Teams
         $data['guid'] = $data['id']; // switch id with Guid
         $data['id'] = 1;             // hardcode id for session load / delete
 
+        $this->memorize('teams_user', serialize($data));
         $this->userTeams->save($data);
     }
 
@@ -197,6 +202,7 @@ class Teams
 
     private function forgetToken()
     {
+        $this->forget('teams_user');
         $this->forget('teams_token');
         $this->token = null;
     }
@@ -211,7 +217,7 @@ class Teams
     {
         try {
             $this->token = $this->provider->getAccessToken('refresh_token', [
-                'scope' => $this->provider->scope,
+                'scope'         => $this->provider->scope,
                 'refresh_token' => $this->token->getRefreshToken(),
             ]);
 
