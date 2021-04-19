@@ -9,7 +9,6 @@ use Atk4\Core\AppScopeTrait;
 use Atk4\Core\Exception;
 use Atk4\Core\NameTrait;
 use Atk4\Core\SessionTrait;
-use Atk4\Data\Model;
 use Atk4\Data\Persistence\Array_;
 use Atk4\Teams\Data\UserTeams;
 use Delight\Cookie\Cookie;
@@ -100,7 +99,7 @@ class Teams
                 throw new Exception('Something is wrong, cookie not exists');
             }
 
-            $cookie_teams = (string) Cookie::get('TEAM_AUTH_STATE');
+            $cookie_teams = (string)Cookie::get('TEAM_AUTH_STATE');
 
             // we already set the cookie with a really short expire
             // we try to delete it
@@ -114,7 +113,7 @@ class Teams
                     // @var AccessToken $token
                     $this->token = $this->provider->getAccessToken('authorization_code', [
                         'scope' => $this->provider->scope,
-                        'code' => $teams_code,
+                        'code'  => $teams_code,
                     ]);
 
                     $this->serializeToken($this->token);
@@ -133,10 +132,10 @@ class Teams
     private function setProvider()
     {
         $this->provider = new Azure([
-            'clientId' => $this->container->get('teams/app_id'),
-            'clientSecret' => $this->container->get('teams/app_secret'),
-            'redirectUri' => $this->container->get('teams/app_redirect_uri'),
-            'scopes' => $this->container->get('teams/app_scopes'),
+            'clientId'               => $this->container->get('teams/app_id'),
+            'clientSecret'           => $this->container->get('teams/app_secret'),
+            'redirectUri'            => $this->container->get('teams/app_redirect_uri'),
+            'scopes'                 => $this->container->get('teams/app_scopes'),
             'defaultEndPointVersion' => Azure::ENDPOINT_VERSION_2_0,
         ]);
     }
@@ -218,7 +217,7 @@ class Teams
     {
         try {
             $this->token = $this->provider->getAccessToken('refresh_token', [
-                'scope' => $this->provider->scope,
+                'scope'         => $this->provider->scope,
                 'refresh_token' => $this->token->getRefreshToken(),
             ]);
 
