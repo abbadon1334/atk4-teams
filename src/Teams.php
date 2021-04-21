@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace Atk4\Teams;
 
 use Atk4\Container\AppContainer;
-use Atk4\Core\Exception;
 use Atk4\Core\SessionTrait;
 use Atk4\Data\Persistence\Array_;
 use Atk4\Teams\Data\UserTeams;
 use Atk4\Ui\AbstractView;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
-use TheNetworg\OAuth2\Client\Token\AccessToken;
 use TheNetworg\OAuth2\Client\Provider\Azure;
-use Throwable;
+use TheNetworg\OAuth2\Client\Token\AccessToken;
 
 class Teams extends AbstractView
 {
@@ -28,10 +26,10 @@ class Teams extends AbstractView
     {
         $this->container = $container;
         $this->provider = new Azure([
-            'clientId'               => $this->container->get('teams/app_id'),
-            'clientSecret'           => $this->container->get('teams/app_secret'),
-            'redirectUri'            => $this->container->get('teams/app_redirect_uri'),
-            'scopes'                 => $this->container->get('teams/app_scopes'),
+            'clientId' => $this->container->get('teams/app_id'),
+            'clientSecret' => $this->container->get('teams/app_secret'),
+            'redirectUri' => $this->container->get('teams/app_redirect_uri'),
+            'scopes' => $this->container->get('teams/app_scopes'),
             'defaultEndPointVersion' => Azure::ENDPOINT_VERSION_2_0,
         ]);
 
@@ -39,10 +37,6 @@ class Teams extends AbstractView
         session_set_cookie_params($this->container->get('teams/session_cookie_params'));
     }
 
-    /**
-     * @throws Exception
-     * @throws IdentityProviderException
-     */
     protected function init(): void
     {
         parent::init();
@@ -51,12 +45,11 @@ class Teams extends AbstractView
         $this->initAccessToken();
 
         $this->getApp()->setResponseHeader('Access-Control-Allow-Credentials', 'true');
-        $this->getApp()->setResponseHeader('Access-Control-Allow-Origin', "*");
-        $this->getApp()->setResponseHeader('Access-Control-Allow-Headers', "*");
+        $this->getApp()->setResponseHeader('Access-Control-Allow-Origin', '*');
+        $this->getApp()->setResponseHeader('Access-Control-Allow-Headers', '*');
 
         // We have a token
         if ($this->accessToken !== null) {
-
             if (!$this->accessToken->hasExpired()) {
                 $this->refreshWhoAMI();
 
@@ -87,28 +80,20 @@ class Teams extends AbstractView
     private function initUserTeams()
     {
         $this->userTeams = new UserTeams(new Array_());
-        $this->userTeams->data = unserialize($this->recall('teams_user', "a:0:{}"));
+        $this->userTeams->data = unserialize($this->recall('teams_user', 'a:0:{}'));
         $this->userTeams->setId($this->userTeams->data['id'] ?? null);
     }
 
-    /**
-     * @throws Exception|IdentityProviderException
-     */
     public function checkAuth()
     {
-
         $teams_code = $_GET['code'] ?? null;
-        if (null === $teams_code) {
+        if ($teams_code === null) {
             $this->requestAuth();
         } else {
             $this->callback();
         }
     }
 
-    /**
-     * @throws \Atk4\Ui\Exception
-     * @throws IdentityProviderException
-     */
     public function callback()
     {
         $teams_code = $_GET['code'] ?? null;
@@ -116,12 +101,12 @@ class Teams extends AbstractView
 
         $saved_state = $this->recall('session_state');
 
-        if($saved_state === null) {
-            throw new \Atk4\Ui\Exception("Something wrong, initial state not found");
+        if ($saved_state === null) {
+            throw new \Atk4\Ui\Exception('Something wrong, initial state not found');
         }
 
-        if($saved_state !== $teams_state) {
-            throw new \Atk4\Ui\Exception("Something wrong, initial state not matching with returned state");
+        if ($saved_state !== $teams_state) {
+            throw new \Atk4\Ui\Exception('Something wrong, initial state not matching with returned state');
         }
 
         $this->forget('session_state');
@@ -129,7 +114,7 @@ class Teams extends AbstractView
         /** @var AccessToken $accessToken */
         $accessToken = $this->provider->getAccessToken('authorization_code', [
             'scope' => $this->provider->scope,
-            'code'  => $teams_code,
+            'code' => $teams_code,
         ]);
 
         $this->serializeToken($accessToken);
@@ -156,9 +141,6 @@ class Teams extends AbstractView
         $this->redirect($authorizationUrl);
     }
 
-    /**
-     * @throws \Atk4\Data\Exception
-     */
     public function refreshWhoAMI(bool $force = false): void
     {
         if ($this->userTeams->loaded() && !$force) {
@@ -175,9 +157,6 @@ class Teams extends AbstractView
         $this->setTeamUser($data);
     }
 
-    /**
-     * @throws \Atk4\Data\Exception
-     */
     private function setTeamUser(array $data)
     {
         unset($data['@odata.context']); // remove useless data
@@ -205,7 +184,7 @@ class Teams extends AbstractView
     public function logout()
     {
         $this->forgetToken();
-        $this->redirect($this->container->get('teams/app_redirect_uri_on_success'));
+        $this->redirect($this->container->get('teams/app_redirect_uri_on_logout'));
     }
 
     private function refreshToken()
@@ -213,7 +192,7 @@ class Teams extends AbstractView
         try {
             /** @var AccessToken $accessToken */
             $accessToken = $this->provider->getAccessToken('refresh_token', [
-                'scope'         => $this->provider->scope,
+                'scope' => $this->provider->scope,
                 'refresh_token' => $this->accessToken->getRefreshToken(),
             ]);
             $this->accessToken = $accessToken;
