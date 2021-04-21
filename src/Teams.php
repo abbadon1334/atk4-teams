@@ -205,7 +205,7 @@ class Teams extends AbstractView
     public function logout()
     {
         $this->forgetToken();
-        $this->redirect($this->container->get('teams/app_redirect_uri_on_success'));
+        $this->redirect($this->container->get('teams/app_redirect_uri_on_logout'));
     }
 
     private function refreshToken()
