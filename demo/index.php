@@ -9,7 +9,6 @@ require_once __DIR__ . '/Application.php';
 use Atk4\Container\AppContainer;
 
 try {
-
     $container = new AppContainer();
     $container->readConfig(__DIR__ . '/teams.config.php');
 
@@ -22,7 +21,6 @@ try {
     ]);
 
     $app->run();
-
 } catch (ErrorException $e) {
     // Initialization errors
     echo $e->getMessage();
